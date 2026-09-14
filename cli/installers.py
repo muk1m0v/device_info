@@ -60,7 +60,13 @@ def _print_info(text: str) -> None:
 
 def _check_host_allowed(url: str) -> bool:
     from urllib.parse import urlparse
-    host = urlparse(url).hostname or ""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    if parsed.scheme != "https":
+        return False
+    host = parsed.hostname or ""
     return host in ALLOWED_HOSTS or host.endswith(".githubusercontent.com")
 
 
@@ -77,10 +83,16 @@ def find_scrcpy() -> str | None:
     return None
 
 
-def download_file(url: str, dest: Path, timeout: int = 60) -> bool:
+# Minimum sane download sizes (bytes). Guards against truncated payloads.
+# Real archives are tens of MB; 1 MB is a generous lower bound.
+MIN_ARCHIVE_SIZE = 1_000_000
+
+
+def download_file(url: str, dest: Path, timeout: int = 60,
+                  min_size: int = MIN_ARCHIVE_SIZE) -> bool:
     """Download URL to dest. Returns True on success, False with message otherwise."""
     if not _check_host_allowed(url):
-        _print_err(f"Blocked untrusted host: {url}")
+        _print_err(f"Blocked untrusted URL (HTTPS + allowlist required): {url}")
         return False
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "device-info-v1"})
@@ -89,24 +101,61 @@ def download_file(url: str, dest: Path, timeout: int = 60) -> bool:
             if status != 200:
                 _print_err(f"HTTP {status} for {url}")
                 return False
+            declared = resp.headers.get("Content-Length")
+            if declared is not None:
+                try:
+                    if int(declared) < min_size:
+                        _print_err(
+                            f"Server reports suspiciously small file "
+                            f"({declared} bytes) for {url}"
+                        )
+                        return False
+                except ValueError:
+                    pass
             dest.parent.mkdir(parents=True, exist_ok=True)
             with open(dest, "wb") as fh:
                 shutil.copyfileobj(resp, fh)
-        if not dest.exists() or dest.stat().st_size == 0:
-            _print_err("Downloaded file is empty.")
+        if not dest.exists():
+            _print_err("Downloaded file is missing.")
+            return False
+        size = dest.stat().st_size
+        if size < min_size:
+            _print_err(f"Downloaded file too small ({size} bytes) — likely truncated.")
+            try:
+                dest.unlink()
+            except OSError:
+                pass
             return False
         return True
     except urllib.error.HTTPError as exc:
         _print_err(f"HTTP error {exc.code} for {url}")
     except urllib.error.URLError as exc:
-        _print_err(f"Download failed: {exc.reason}")
+        _print_err(f"Download failed (no internet?): {exc.reason}")
+    except TimeoutError:
+        _print_err("Download timed out.")
     except OSError as exc:
         _print_err(f"Download failed: {exc}")
     return False
 
 
+def _member_target(zip_path: str, target_dir: Path) -> Path | None:
+    """Resolve one archive member; return None if it escapes target_dir."""
+    member = Path(zip_path)
+    if member.is_absolute():
+        return None
+    if ".." in member.parts:
+        return None
+    # Resolve against target without touching the filesystem.
+    resolved = (target_dir / member).resolve()
+    try:
+        resolved.relative_to(target_dir.resolve())
+    except ValueError:
+        return None
+    return resolved
+
+
 def safe_extract_zip(zip_path: Path, target_dir: Path) -> bool:
-    """Extract zip, verifying archive integrity first."""
+    """Extract zip, verifying archive integrity and blocking Zip Slip."""
     try:
         if not zipfile.is_zipfile(zip_path):
             _print_err("Downloaded file is not a valid zip archive.")
@@ -117,6 +166,13 @@ def safe_extract_zip(zip_path: Path, target_dir: Path) -> bool:
             if bad is not None:
                 _print_err(f"Archive is corrupted (bad file: {bad}).")
                 return False
+            for name in zf.namelist():
+                # Skip directory entries (they resolve fine but carry nothing).
+                if name.endswith("/"):
+                    continue
+                if _member_target(name, target_dir) is None:
+                    _print_err(f"Blocked unsafe archive entry: {name}")
+                    return False
             zf.extractall(target_dir)
         return True
     except zipfile.BadZipFile:
@@ -135,7 +191,12 @@ def get_scrcpy_download_url(timeout: int = 20) -> str:
         for asset in data.get("assets", []):
             name = asset.get("name", "")
             url = asset.get("browser_download_url", "")
-            if "win64" in name and name.endswith(".zip") and _check_host_allowed(url):
+            if (
+                "win64" in name
+                and name.endswith(".zip")
+                and url.endswith(".zip")
+                and _check_host_allowed(url)
+            ):
                 return url
     except Exception:
         pass
@@ -177,19 +238,36 @@ def install_scrcpy() -> bool:
     return False
 
 
+def _safe_input(prompt: str) -> str | None:
+    """Prompt that returns None on EOF/Ctrl+C instead of raising."""
+    try:
+        return input(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+
+
 def prompt_install_adb() -> None:
     print("\nAndroid Platform Tools not found.\n")
     print("[1] Install automatically")
     print("[2] Open download page")
     print("[0] Back")
-    choice = input("Select: ").strip()
+    choice = _safe_input("Select: ")
+    if choice is None or choice == "0":
+        return
     if choice == "1":
         ok = install_platform_tools()
         if not ok:
             _print_err("Automatic install failed. Try option [2].")
     elif choice == "2":
-        webbrowser.open(PLATFORM_TOOLS_PAGE)
+        try:
+            webbrowser.open(PLATFORM_TOOLS_PAGE)
+        except Exception:
+            _print_err("Could not open the browser.")
+            return
         _print_info("Download Platform Tools, unpack to tools/platform-tools/")
+    else:
+        _print_err("Unknown option.")
     # else back
 
 
@@ -198,25 +276,40 @@ def prompt_install_scrcpy() -> None:
     print("[1] Install automatically")
     print("[2] Open official download page")
     print("[0] Back")
-    choice = input("Select: ").strip()
+    choice = _safe_input("Select: ")
+    if choice is None or choice == "0":
+        return
     if choice == "1":
         ok = install_scrcpy()
         if not ok:
             _print_err("Automatic install failed. Try option [2].")
     elif choice == "2":
-        webbrowser.open(SCRCPY_PAGE)
+        try:
+            webbrowser.open(SCRCPY_PAGE)
+        except Exception:
+            _print_err("Could not open the browser.")
+            return
         _print_info("Download scrcpy release, unpack to tools/scrcpy/")
+    else:
+        _print_err("Unknown option.")
     # else back
 
 
-def run_scrcpy() -> None:
+def run_scrcpy(serial: str | None = None) -> None:
     exe = find_scrcpy()
     if not exe:
         prompt_install_scrcpy()
         return
+    if not Path(exe).is_file():
+        _print_err("scrcpy binary is missing or corrupted. Reinstall it.")
+        prompt_install_scrcpy()
+        return
+    cmd = [exe]
+    if serial:
+        cmd += ["--serial", serial]
     _print_info(f"Starting scrcpy: {exe}")
     try:
-        subprocess.Popen([exe])
+        subprocess.Popen(cmd)
         _print_ok("scrcpy launched.")
     except OSError as exc:
         _print_err(f"Failed to start scrcpy: {exc}")

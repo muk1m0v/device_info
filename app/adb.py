@@ -66,6 +66,33 @@ def get_connected_devices() -> list[dict]:
     return parse_adb_devices(out)
 
 
+def authorized_devices() -> list[dict]:
+    """Connected devices in `device` state (usable for diagnostics)."""
+    return [d for d in get_connected_devices() if d["state"] == "device"]
+
+
+def normalize_battery_temp(raw: str) -> str:
+    """Turn a `dumpsys battery` temperature reading into `XX.X°C` or `N/A`.
+
+    Stock Android reports tenths of a degree (294 -> 29.4°C), but some
+    devices report whole degrees (42 -> 42.0°C). Values outside any sane
+    range are rejected instead of producing nonsense like 4200.0°C.
+    """
+    try:
+        value = float(raw.strip())
+    except (ValueError, AttributeError):
+        return "N/A"
+    if 100 <= abs(value) <= 1000:
+        celsius = value / 10
+    elif -50 <= value <= 100:
+        celsius = value
+    else:
+        return "N/A"
+    if not -50 <= celsius <= 100:
+        return "N/A"
+    return f"{celsius:.1f}°C"
+
+
 def _getprop(serial: str, prop: str) -> str:
     code, out, _ = run_adb(["-s", serial, "shell", "getprop", prop])
     if code != 0:
@@ -75,7 +102,6 @@ def _getprop(serial: str, prop: str) -> str:
 
 def get_device_info(serial: str) -> dict:
     """Collect read-only info for one device serial."""
-    code, _, _ = run_adb(["-s", serial, "shell", "echo", "ok"])
     info: dict = {"serial": serial, "status": "unknown"}
     devices = get_connected_devices()
     for dev in devices:
@@ -110,20 +136,14 @@ def get_summary(serial: str) -> dict:
     manufacturer = _getprop(serial, "ro.product.manufacturer")
     model = _getprop(serial, "ro.product.model")
     summary["device"] = f"{manufacturer} {model}".strip() or model or "Unknown"
-    summary["android"] = _getprop(serial, "ro.build.version.release") or "?"
+    summary["android"] = _getprop(serial, "ro.build.version.release") or "N/A"
 
     # Battery
     battery_out = _shell(serial, "dumpsys", "battery")
     level = re.search(r"level:\s*(\d+)", battery_out)
-    temp = re.search(r"temperature:\s*(\d+)", battery_out)
-    summary["battery"] = f"{level.group(1)}%" if level else "?"
-    if temp:
-        try:
-            summary["battery_temp"] = f"{int(temp.group(1)) / 10:.1f}°C"
-        except ValueError:
-            summary["battery_temp"] = "?"
-    else:
-        summary["battery_temp"] = "?"
+    temp = re.search(r"temperature:\s*(-?[\d.]+)", battery_out)
+    summary["battery"] = f"{level.group(1)}%" if level else "N/A"
+    summary["battery_temp"] = normalize_battery_temp(temp.group(1)) if temp else "N/A"
 
     # RAM (MemTotal / MemAvailable from /proc/meminfo)
     meminfo = _shell(serial, "cat", "/proc/meminfo")
@@ -135,13 +155,27 @@ def get_summary(serial: str) -> dict:
             a_gb = int(avail.group(1)) / 1024 / 1024
             summary["ram"] = f"{t_gb - a_gb:.1f} / {t_gb:.1f} GB"
         except ValueError:
-            summary["ram"] = "?"
+            summary["ram"] = "N/A"
     else:
-        summary["ram"] = "?"
+        summary["ram"] = "N/A"
+
+    # RAM (MemTotal / MemAvailable from /proc/meminfo)
+    meminfo = _shell(serial, "cat", "/proc/meminfo")
+    total = re.search(r"MemTotal:\s*(\d+)", meminfo)
+    avail = re.search(r"MemAvailable:\s*(\d+)", meminfo)
+    if total and avail:
+        try:
+            t_gb = int(total.group(1)) / 1024 / 1024
+            a_gb = int(avail.group(1)) / 1024 / 1024
+            summary["ram"] = f"{t_gb - a_gb:.1f} / {t_gb:.1f} GB"
+        except ValueError:
+            summary["ram"] = "N/A"
+    else:
+        summary["ram"] = "N/A"
 
     # Storage (df /data)
     df_out = _shell(serial, "df", "/data")
-    storage = "?"
+    storage = "N/A"
     for line in df_out.splitlines():
         if "/data" in line:
             parts = line.split()
@@ -165,5 +199,5 @@ def get_summary(serial: str) -> dict:
     # Resolution
     wm_out = _shell(serial, "wm", "size")
     m = re.search(r"(\d+x\d+)", wm_out)
-    summary["resolution"] = m.group(1) if m else "?"
+    summary["resolution"] = m.group(1) if m else "N/A"
     return summary

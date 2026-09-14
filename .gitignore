@@ -19,7 +19,30 @@ logs/
 Thumbs.db
 
 # Local auto-downloaded binaries (ADB / scrcpy).
-# NOTE: this folder also contains pre-existing project tooling
-# (apktool etc.), so only the auto-downloaded subfolders are ignored.
 tools/platform-tools/
 tools/scrcpy/
+
+# Task/instruction files (never commit these)
+work*.md
+
+# --- Co-located non-Device-Info project (SystemUI reverse engineering) ---
+# This folder physically contains an unrelated Android/SystemUI project.
+# These rules keep `git add .` from polluting the Device Info repository.
+# They intentionally do NOT match any Device Info path (main.py, app/,
+# cli/, docs/, requirements.txt, README.md, LICENSE, CHANGELOG.md,
+# AUDIT_REPORT.md, tools/.gitkeep).
+SystemUI-src/
+SystemUI-samsung-src/
+sysui_rro_product_src/
+build/
+*.apk
+tools/apktool*.jar
+tools/apktool*.json
+tools/apktool*.log
+tools/*.ps1
+tools/decode-incomplete/
+tools/framework/
+tools/samsung-framework/
+tools/samsung-stage1-audit/
+tools/qs-stage1-audit/
+tools/SystemUI-original.sha256

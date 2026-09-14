@@ -1,2 +1,2 @@
-rich
-flask
+rich==15.0.0
+flask==3.1.3

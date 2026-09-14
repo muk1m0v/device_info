@@ -40,7 +40,7 @@ def _safe_rich_print(console, *args, **kwargs) -> bool:
         return False
 
 
-def show_banner(version: str = "1.0.0") -> None:
+def show_banner(version: str = "1.1.0") -> None:
     """Clear terminal and print the banner with pleasant colors."""
     clear_screen()
     try:
