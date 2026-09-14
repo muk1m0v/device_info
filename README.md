@@ -10,14 +10,21 @@ Android diagnostics, monitoring and device dashboard powered by ADB.
 
 A modern Android device diagnostics dashboard powered by ADB.
 
+![Device Info Dashboard](img/dashboard.png)
+
 ## Screenshots
 
-Dashboard screenshot:
+### CLI
 
-![dashboard](docs/screenshots/dashboard.png)
+Device Info provides an interactive terminal interface for managing connected Android devices.
 
-> If the image above does not load yet, just put your screenshot at
-> `docs/screenshots/dashboard.png` — the path is already wired in.
+![Device Info CLI](img/cli.png)
+
+### Web Dashboard
+
+The local web dashboard provides a clean real-time overview of the connected Android device.
+
+![Device Info Dashboard](img/dashboard.png)
 
 ## Features
 
