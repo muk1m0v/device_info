@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased (stays v1.1.1, no tag)
+
+### Fixed
+- CLI banner is now horizontally centered using the real terminal width
+  (`shutil.get_terminal_size()`, no hardcoded spaces); narrow terminals
+  fall back to reduced ASCII or plain `DEVICE INFO` text without breaking.
+  Orange color and centered `DEVICE INFO vX` / subtitle lines kept.
+
 ## v1.1.1
 
 ### Fixed
