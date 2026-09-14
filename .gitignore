@@ -1,0 +1,25 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Editors
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local auto-downloaded binaries (ADB / scrcpy).
+# NOTE: this folder also contains pre-existing project tooling
+# (apktool etc.), so only the auto-downloaded subfolders are ignored.
+tools/platform-tools/
+tools/scrcpy/
