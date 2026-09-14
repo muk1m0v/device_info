@@ -209,8 +209,9 @@ def option_dashboard() -> None:
         if picked is None and len([d for d in devices if d["state"] == "device"]) > 1:
             return  # user backed out of the picker
         serial = picked["serial"] if picked else None
-    from app import dashboard
-    dashboard.run_dashboard(serial)
+    # Single source: same orange/white dashboard as `device info`.
+    from app import dashboard_launcher
+    dashboard_launcher.open_dashboard(serial)
 
 
 def option_scrcpy() -> None:

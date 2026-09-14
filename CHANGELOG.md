@@ -7,6 +7,14 @@
   (`shutil.get_terminal_size()`, no hardcoded spaces); narrow terminals
   fall back to reduced ASCII or plain `DEVICE INFO` text without breaking.
   Orange color and centered `DEVICE INFO vX` / subtitle lines kept.
+- Unified dashboard launcher: `python main.py -> [1]` now opens the same
+  orange/white dashboard as the global `device info` command (single
+  reusable entry point `app.dashboard_launcher.open_dashboard`, subprocess
+  delegation to `cli/device.py info` — no copied HTML/CSS, no second
+  frontend). Falls back to the local Flask dashboard only when the
+  orange-dashboard project is not installed next to the checkout.
+- Fixed missing `shutil` import in `cli/banner.py` (centering relied on a
+  `NameError`-to-fallback path).
 
 ## v1.1.1
 
