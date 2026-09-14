@@ -216,8 +216,11 @@ dashboard imports, free-port search and routes (`/`, `/api/info`) OK;
 - **Problem:** Shell invocation (constant string — no injection), flagged by
   strict linters.
 - **Risk:** None in practice.
-- **Fix:** Keep (fixed string, no user input); documented here.
-- **Status:** Open (accepted, no change)
+- **Fix:** Replaced with `subprocess.run()` argv-list form (no `shell=True`):
+  `["cmd", "/c", "cls"]` on Windows, `["clear"]` elsewhere; skips clearing
+  when stdout is piped; `OSError` swallowed so a missing binary never breaks
+  startup.
+- **Status:** Fixed in v1.1.1
 
 ### L-004 — Hardcoded dashboard title / README version staleness risk
 - **Severity:** Low
@@ -258,6 +261,14 @@ dashboard imports, free-port search and routes (`/`, `/api/info`) OK;
 
 ## Verification (re-audit 2026-09-14, v1.1.0)
 
+### Count correction (v1.1.1)
+The delivery summary for v1.1.0 stated "8 Medium / 20 total". That was a
+counting error in the summary text, not a missing entry: every finding in
+this file is severity-labeled, and the labels tally to **1 Critical /
+7 High / 7 Medium / 4 Low = 19 total**. DEP-002 (Flask CVEs) is correctly
+labeled High; no Medium entry is missing, so the number was corrected
+instead of inventing one.
+
 - `python -m compileall main.py app cli` — clean.
 - Secret/grep sweep (`shell=True`, passwords, tokens, hardcoded serial,
   `TODO`/`FIXME`, `0.0.0.0`, `debug=True`) — only hit is a comment stating
@@ -275,6 +286,5 @@ dashboard imports, free-port search and routes (`/`, `/api/info`) OK;
 
 ## Recommendations
 
-All recommendations applied. Open items remaining: none, except L-003
-(`os.system` with a constant string — accepted, no change) and the
-documented SHA-256 limitation (SEC-002).
+All recommendations applied. Open items remaining: none, except the
+documented SHA-256 limitation (SEC-002). L-003 was fixed in v1.1.1.

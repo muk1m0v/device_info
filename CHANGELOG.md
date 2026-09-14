@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.1
+
+### Fixed
+- Audit count correction: the v1.1.0 delivery summary stated "8 Medium /
+  20 total"; the labeled findings actually tally to 1 Critical / 7 High /
+  7 Medium / 4 Low = 19 (DEP-002 is High, no Medium entry was missing).
+  Documented in `AUDIT_REPORT.md`.
+- Replaced the last `os.system` call (`clear_screen`) with argv-list
+  `subprocess.run` (no `shell=True`); screen clearing is skipped for piped
+  output and never breaks startup.
+
 ## v1.1.0
 
 ### Security

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 
 BANNER = r"""
 ██████╗ ███████╗██╗   ██╗██╗ ██████╗███████╗
@@ -17,7 +19,16 @@ BANNER = r"""
 
 
 def clear_screen() -> None:
-    os.system("cls" if os.name == "nt" else "clear")
+    """Clear the terminal via argv-list subprocess (no shell=True)."""
+    try:
+        if not sys.stdout.isatty():
+            return  # piped output: nothing to clear
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "cls"], check=False)
+        else:
+            subprocess.run(["clear"], check=False)
+    except OSError:
+        pass
 
 
 BANNER_ASCII = r"""
@@ -40,7 +51,7 @@ def _safe_rich_print(console, *args, **kwargs) -> bool:
         return False
 
 
-def show_banner(version: str = "1.1.0") -> None:
+def show_banner(version: str = "1.1.1") -> None:
     """Clear terminal and print the banner with pleasant colors."""
     clear_screen()
     try:

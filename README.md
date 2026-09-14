@@ -6,7 +6,7 @@ Android diagnostics, monitoring and device dashboard powered by ADB.
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-blue)
 ![Android](https://img.shields.io/badge/Android-ADB-green)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Version](https://img.shields.io/badge/Version-1.1.0-orange)
+![Version](https://img.shields.io/badge/Version-1.1.1-orange)
 
 A modern Android device diagnostics dashboard powered by ADB.
 
@@ -77,7 +77,7 @@ On first start the program installs missing Python dependencies itself
 ## CLI menu
 
 ```
-DEVICE INFO v1.1.0
+DEVICE INFO v1.1.1
 
 [1] Open Device Dashboard
 [2] Check connected devices
@@ -213,7 +213,7 @@ device_info/
 ├── LICENSE
 ├── .gitignore
 ├── app/
-│   ├── __init__.py      # __version__ = "1.1.0"
+│   ├── __init__.py      # __version__ = "1.1.1"
 │   ├── adb.py           # find_adb, devices, summary, temp normalization
 │   ├── dashboard.py     # Flask app (localhost), free port, browser
 │   └── logging_setup.py # rotating file log
