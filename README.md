@@ -2,6 +2,8 @@
 
 Android diagnostics, monitoring and device dashboard powered by ADB.
 
+![Device Info](img/main_logo.png)
+
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-blue)
 ![Android](https://img.shields.io/badge/Android-ADB-green)
@@ -9,8 +11,6 @@ Android diagnostics, monitoring and device dashboard powered by ADB.
 ![Version](https://img.shields.io/badge/Version-1.1.1-orange)
 
 A modern Android device diagnostics dashboard powered by ADB.
-
-![Device Info Dashboard](img/dashboard.png)
 
 ## Screenshots
 
